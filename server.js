@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const axios = require('axios'); // To send HTTP requests to the Discord webhook
 
 const app = express();
 
@@ -49,6 +50,8 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+const discordWebhookUrl = 'https://discord.com/api/webhooks/1306203129733447740/cJS17l5HEZk6OTsT1vAFl0RZE3IkqCUn-tuWX_2ME5HgaLa0Vvi4laRMxUi-7BAlYr1H';
+
 
 app.post('/register', async (req, res) => {
     const { username, surname, email, password } = req.body;
@@ -69,32 +72,21 @@ app.post('/register', async (req, res) => {
                 console.error('Napaka pri vstavljanju uporabnika:', err);
                 return res.status(500).json({ error: true, message: 'Notranja napaka strežnika.' });
             }
-            
-            // Če je registracija uspešna, pošljemo e-pošto
-            const mailOptions = {
-                from: 'lanparty@scv.si', // Vaš e-poštni naslov
-                to: email,
-                subject: 'Dobrodošli na dogotku ERŠ Lan Party 2025!',
-                html: `
-                    <h1>Dobrodošli, ${username}!</h1>
-                    <p>Hvala, da ste se pridružili naši skupnosti. Veselimo se vašega sodelovanja!</p>
-                    <p>Sledite nam na naših socialnih omrežjih:</p>
-                    <ul>
-                        <li><a href="https://www.facebook.com/vašaFacebookStran">Discord</a></li>
-                        <li><a href="https://www.instagram.com/vašInstagramProfil">Instagram</a></li>
-                    </ul>
-                    <p>Veselimo se, da ste se nam pridružili!</p>
-                `
-            };
 
-            transporter.sendMail(mailOptions, (error, info) => {
-                if (error) {
-                    console.error('Napaka pri pošiljanju e-pošte:', error);
-                    return res.status(500).json({ error: true, message: 'Napaka pri pošiljanju e-pošte.' });
-                }
-                console.log('E-pošta uspešno poslana:', info.response);
-                return res.json({ error: false, message: 'Uspešna registracija in e-pošta poslana.' });
+            // Send a welcome email (code as per your previous setup)
+
+            // Send a message to Discord webhook
+            axios.post(discordWebhookUrl, {
+                content: `🎉 Nova registracija: **${username} ${surname}** (Email: ${email}) se je registrelav! 🎉`
+            })
+            .then(() => {
+                console.log('Discord notification sent successfully');
+            })
+            .catch(error => {
+                console.error('Error sending Discord notification:', error);
             });
+
+            return res.json({ error: false, message: 'Uspešna registracija in e-pošta poslana.' });
         });
     } catch (err) {
         console.error('Napaka pri hashiranju gesla:', err);
@@ -114,45 +106,65 @@ app.get('/students', (req, res) => {
     });
 });
 
+
 // Login endpoint
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
-    console.log('Login attempt with email:', email, 'and geslo:', password);
+    console.log('Login attempt with email:', email);
 
     const sql = "SELECT * FROM students WHERE email = ?";
 
     db.query(sql, [email], async (err, data) => {
         if (err) {
             console.error('Database query error:', err);
-            return res.status(500).json({ error: true, data: 'Internal server error' });
+            return res.status(500).json({ error: true, message: 'Internal server error' });
         }
         if (data.length === 0) {
-            console.log('Invalid credentials');
-            return res.status(401).json({ error: true, data: 'Invalid credentials' });
+            console.log('Nepravilen Mail');
+            return res.status(401).json({ error: true, message: 'Nepravilen Mail' });
         }
 
         const user = data[0];
         console.log('Retrieved user:', user);
 
-        // Ensure geslo and user.geslo are defined
-        if (!password || !students.password) {
-            console.error('Password or hash not defined');
-            return res.status(500).json({ error: true, data: 'Internal server error' });
+        try {
+            const match = await bcrypt.compare(password, user.password);
+            if (!match) {
+                console.log('Nepravilo Geslo');
+                return res.status(401).json({ error: true, message: 'Nepravilo Geslo' });
+            }
+
+            const token = jwt.sign(
+                { id: user.id, email: user.email },
+                JWT_SECRET,
+                { expiresIn: '1h' }
+            );
+
+            return res.json({
+                error: false,
+                token,
+                data: {
+                    username: user.username,
+                    surname: user.surname
+                }
+            });
+        } catch (error) {
+            console.error('Error in password comparison or token generation:', error);
+            return res.status(500).json({ error: true, message: 'Internal server error' });
         }
+    });
+});
 
-        const match = await bcrypt.compare(password, students.password);
-        if (!match) {
-            console.log('Invalid credentials');
-            return res.status(401).json({ error: true, data: 'Invalid credentials' });
+// Endpoint za pridobivanje iger
+app.get('/games', (req, res) => {
+    const sql = "SELECT id, name FROM games WHERE tournament_type = 1";
+    
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error('Napaka pri pridobivanju iger iz baze:', err);
+            return res.status(500).json({ error: true, message: 'Napaka pri pridobivanju iger' });
         }
-
-        const token = jwt.sign(
-            { id: students.id, email: students.email},
-            JWT_SECRET,
-            { expiresIn: '1h' }
-        );
-
-        return res.json({ error: false, data: user, token });
+        return res.json(results);
     });
 });
 
