@@ -168,6 +168,18 @@ app.get('/games', (req, res) => {
     });
 });
 
+app.get('/sponsors', (req, res) => {
+    const sql = "SELECT * FROM sponsors";
+
+    db.query(sql, (err, results) => {
+        if(err) {
+            console.error('Našaka pri pridobibanju spozorja:', err);
+            return res.status(500).json({error: true, message: 'napaka pri pridobivanju spozorjev'});
+        }
+        return res.json(results);
+    });
+}); 
+
 // Endpoint to change password
 app.post('/change-password', async (req, res) => {
     const { email, password } = req.body;
