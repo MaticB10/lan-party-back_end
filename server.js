@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const axios = require('axios'); // To send HTTP requests to the Discord webhook
+require('dotenv').config(); // Uporabi dotenv za branje .env datoteke
 
 const app = express();
 
@@ -13,21 +14,22 @@ const app = express();
 app.use(cors()); // Enable Cross-Origin Resource Sharing
 app.use(bodyParser.json()); // Parse JSON bodies
 
-// Database connection setup
 const db = mysql.createConnection({
-    host: "localhost",       
-    user: 'root',           
-    password: '',     
-    database: 'lan_test' 
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT
 });
 
-db.connect(err => {
+db.connect((err) => {
     if (err) {
-        console.error('Error connecting to the database:', err.stack);
+        console.error('Napaka pri povezavi z bazo:', err);
         return;
     }
-    console.log('Connected to the database');
+    console.log('Uspešna povezava z bazo!');
 });
+
 
 const JWT_SECRET = '1e3522035699e5d8e5fc73a2a5774b86e6fa2ab7500de3dc32f0f0d8d2d77c1c';
 
@@ -237,6 +239,8 @@ app.post('/change-password', async (req, res) => {
 });
 
 // Start the server
-app.listen(8081, () => {
-    console.log("Listening on port 8081");
+const port = process.env.PORT || 8081;
+app.listen(port, () => {
+    console.log(`Listening on port ${port}`);
 });
+
