@@ -168,6 +168,18 @@ app.get('/games', (req, res) => {
     });
 });
 
+app.get('/teams', (req, res) => {
+    const sql = "SELECT * FROM teams";
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error('Napaka pri pridobivanju ekip iz baze:', err);
+            return res.status(500).json({ error: true, message: 'Napaka pri pridobivanju ekip' });
+        }
+        return res.json(results); // Vrne rezultate kot JSON
+    });
+});
+
+
 app.get('/sponsors', (req, res) => {
     const sql = "SELECT * FROM sponsors";
 
@@ -179,6 +191,18 @@ app.get('/sponsors', (req, res) => {
         return res.json(results);
     });
 }); 
+
+app.get('/tournaments', (req, res) => {
+    const sql = "SELECT t.id, t.name FROM tournaments t INNER JOIN games g ON t.game_id = g.id WHERE g.tournament_type = 1 AND t.status = 'active'";
+
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error('Napaka pri pridobivanju iger iz baze:', err);
+            return res.status(500).json({ error: true, message: 'Napaka pri pridobivanju iger' });
+        }
+        return res.json(results);
+    });
+});
 
 // Endpoint to change password
 app.post('/change-password', async (req, res) => {
