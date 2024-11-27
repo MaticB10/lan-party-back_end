@@ -181,6 +181,25 @@ app.get('/teams', (req, res) => {
     });
 });
 
+app.post('/teams', (req, res) => {
+    const { name, tournament_id, students_id } = req.body;
+
+    if (!name || !tournament_id || !students_id) {
+        return res.status(400).json({ error: true, message: 'Vsa polja so obvezna.' });
+    }
+
+    const sql = "INSERT INTO teams (name, tournament_id, student_id) VALUES (?, ?, ?)";
+    db.query(sql, [name, tournament_id, students_id], (err, result) => {
+        if (err) {
+            console.error('Napaka pri vstavljanju ekipe:', err);
+            return res.status(500).json({ error: true, message: 'Napaka pri shranjevanju ekipe.' });
+        }
+
+        return res.json({ error: false, message: 'Ekipa uspešno prijavljena!' });
+    });
+});
+
+
 
 app.get('/sponsors', (req, res) => {
     const sql = "SELECT * FROM sponsors";
@@ -189,6 +208,18 @@ app.get('/sponsors', (req, res) => {
         if(err) {
             console.error('Našaka pri pridobibanju spozorja:', err);
             return res.status(500).json({error: true, message: 'napaka pri pridobivanju spozorjev'});
+        }
+        return res.json(results);
+    });
+}); 
+
+app.get('/blog', (req, res) => {
+    const sql = "SELECT * FROM blog";
+
+    db.query(sql, (err, results) => {
+        if(err) {
+            console.error('Našaka pri pridobibanju blog:', err);
+            return res.status(500).json({error: true, message: 'napaka pri pridobivanju blog'});
         }
         return res.json(results);
     });
