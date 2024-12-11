@@ -199,6 +199,29 @@ app.post('/teams', (req, res) => {
     });
 });
 
+app.post('/solo-tournament', async (req, res) => {
+    const { students_id, participate, tournament_name, slogan } = req.body;
+  
+    // Preverjanje vhodnih podatkov
+    if (!students_id || !participate || !tournament_name) {
+      return res.status(400).json({ error: 'Manjkajoči podatki.' });
+    }
+  
+    try {
+      // Vstavljanje podatkov v bazo
+      const [result] = await db.execute(
+        `INSERT INTO solo_tournaments (students_id, participate, tournament_name, slogan) 
+         VALUES (?, ?, ?, ?)`,
+        [students_id, participate, tournament_name, slogan]
+      );
+  
+      res.status(201).json({ message: 'Podatki shranjeni uspešno.', id: result.insertId });
+    } catch (error) {
+      console.error('Napaka pri shranjevanju v bazo:', error);
+      res.status(500).json({ error: 'Napaka pri shranjevanju podatkov.' });
+    }
+  });
+
 
 
 app.get('/sponsors', (req, res) => {
@@ -227,6 +250,18 @@ app.get('/blog', (req, res) => {
 
 app.get('/tournaments', (req, res) => {
     const sql = "SELECT t.id, t.name FROM tournaments t INNER JOIN games g ON t.game_id = g.id WHERE g.tournament_type = 1 AND t.status = 'active'";
+
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error('Napaka pri pridobivanju iger iz baze:', err);
+            return res.status(500).json({ error: true, message: 'Napaka pri pridobivanju iger' });
+        }
+        return res.json(results);
+    });
+});
+
+app.get('/tournaments-solo', (req, res) => {
+    const sql = "SELECT t.id, t.name FROM tournaments t INNER JOIN games g ON t.game_id = g.id WHERE g.tournament_type = 2 AND t.status = 'active'";
 
     db.query(sql, (err, results) => {
         if (err) {
